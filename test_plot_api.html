@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Chart using XML Data</title>
+<script type="text/javascript" src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
+<script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+<script type="text/javascript">
+window.onload = function() {
+
+  const selectStates = document.querySelector('#states');
+  const selectCities = document.querySelector('#cities');
+
+  function populateStateSelect() {
+  	fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+  		.then(res => res.json())
+  		.then(states => {
+  			states.map(state => {
+  				const option = document.createElement('option');
+
+  				option.setAttribute('value', state.id);
+  				option.textContent = state.sigla;
+
+  				selectStates.appendChild(option);
+  			});
+  		})
+  }
+
+  function populateCitySelect() {
+  	selectStates.addEventListener('change', () => {
+
+  		let nodesSelectCities = selectCities.childNodes;
+
+  		[...nodesSelectCities].map(node => node.remove());
+
+  		let state = selectStates.options[selectStates.selectedIndex].value;
+
+  		fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${state}/municipios`)
+  			.then(res => res.json())
+  			.then(cities => {
+
+  				selectCities.removeAttribute('disabled');
+
+  				cities.map(city => {
+
+  					const option = document.createElement('option');
+
+  					option.textContent = city.nome;
+
+  					selectCities.appendChild(option);
+  				});
+  			})
+  	});
+  }
+  populateStateSelect();
+  populateCitySelect();
+
+
+
+
+    var dataset_novos = [];
+    var dataset_confr = [];
+    var first_address_novos = "https://brasil.io/api/dataset/covid19/caso_full/data/?format=json&page=1";
+    var first_address_confr = "https://brasil.io/api/dataset/covid19/caso/data/?format=json&page=1";
+
+    function recursively_ajax(next, dataset) {
+      $.ajax({
+        url: next,
+        async: false,
+        success: function(data){
+          next = data.next;
+          // var results = data.results;
+          if(next!=null) {
+            dataset.push(data.results);
+            recursively_ajax(next, dataset);
+          } else {
+            dataset.push(data.results);
+            selectStates.removeAttribute('disabled');
+          }
+      }});
+    }
+    recursively_ajax(first_address_novos, dataset_novos);
+    recursively_ajax(first_address_confr, dataset_confr);
+
+    const goButton = document.querySelector('#go');
+    function collectData() {
+      selectCities.addEventListener('change', () => {
+        goButton.removeAttribute('disabled');
+      });
+      goButton.addEventListener('click', () => {
+        var state = $('#states :selected').text();
+        var city = $('#cities :selected').text();
+        // alert(city + " - " + state);
+
+        // Retrieving data novos from a city
+        var city_samples_novos = [];
+        // alert(dataset_novos.length);
+        for(pag=0; pag<dataset_novos.length; pag++) {
+          var results_pag = dataset_novos[pag];
+          for(i=0; i<results_pag.length; i++) {
+            var sample = results_pag[i];
+            if(sample.city == city && sample.state == state && sample.place_type == "city") {
+              city_samples_novos.push(sample);
+            }
+          }
+        }
+
+        var dataPoints_novos = [];
+        for(i=0; i<city_samples_novos.length; i++) {
+          dataPoints_novos.push({
+              x: new Date(city_samples_novos[i].date),
+              y: parseFloat(city_samples_novos[i].new_confirmed)
+          });
+        }
+
+        var chart_novos = new CanvasJS.Chart("chartContainerNovos", {
+          animationEnabled: true,
+  		    title: {
+  		         text: "Novos Casos " + city,
+  		    },
+  		    data: [{
+               type: "column",
+               color: "#014D65",
+  		         dataPoints: dataPoints_novos
+  		      }]
+  	     });
+
+        // Retrieving data confirmados from a city
+        var city_samples_confr = [];
+        // alert(dataset_novos.length);
+        for(pag=0; pag<dataset_confr.length; pag++) {
+          var results_pag = dataset_confr[pag];
+          for(i=0; i<results_pag.length; i++) {
+            var sample = results_pag[i];
+            if(sample.city == city && sample.state == state && sample.place_type == "city") {
+              city_samples_confr.push(sample);
+            }
+          }
+        }
+
+        var dataPoints_confr = [];
+        for(i=0; i<city_samples_confr.length; i++) {
+          dataPoints_confr.push({
+              x: new Date(city_samples_confr[i].date),
+              y: parseFloat(city_samples_confr[i].confirmed)
+          });
+        }
+
+         var chart_confr = new CanvasJS.Chart("chartContainerConfirmados", {
+           animationEnabled: true,
+   		    title: {
+   		         text: "Casos Confirmados " + city,
+   		    },
+   		    data: [{
+                type: "line",
+   		         dataPoints: dataPoints_confr
+   		      }]
+   	     });
+
+  	     chart_novos.render();
+   	     chart_confr.render();
+  })
+  }
+  collectData();
+}
+</script>
+</head>
+<body>
+  <select id="states" disabled>
+    <option value="">Selecione um estado</option>
+  </select>
+
+  <select id="cities" disabled>
+    <option value="">Por favor, selecione um estado</option>
+  </select>
+  <button type="button" id="go" disabled>Gerar Gráfico</button>
+  <div id="chartContainerConfirmados" style="width:100%; height:300px;"></div>
+	<div id="chartContainerNovos" style="width:100%; height:300px;"></div>
+</body>
+</html>
