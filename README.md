@@ -8,7 +8,7 @@ Running the Python script you download the datasets `casos.csv.gz`  and `casos_f
 There is a creation of a csv file with the specific data extracted: number of daily cases and number of total confirmed cases for the hard-coded city.
 
 `test_plot_csv.html` has a small javascript code for plotting the resulted csv.
-This page has an online version [here](https://vncprado.githhub.io/pebas/) for the city of Parauapebas, PA, Bazil.
+This page has an online version [here](https://vncprado.github.io/pebas/) for the city of Parauapebas, PA, Bazil.
 
 You can test locally the html page using:
 
